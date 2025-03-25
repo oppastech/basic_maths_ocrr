@@ -203,18 +203,7 @@
         }
         
         // Constants
-        // Make API request with the token
-        const response = await fetch(`${MODEL_URL}/api/predict`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${HF_TOKEN}`
-            },
-            body: JSON.stringify({
-                data: [`data:${file.type};base64,${base64Image}`],
-                fn_index: 0
-            })
-        });
+        const HF_TOKEN = "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";
         const MODEL_URL = "https://oppastech-handwriting-math-ocr.hf.space";
         
         // Dark mode detection
