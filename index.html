@@ -168,6 +168,22 @@
             <div class="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
                 <p>Powered by <a href="https://huggingface.co/spaces/oppastech/handwriting-math-ocr" target="_blank" class="text-primary hover:underline">oppastech/handwriting-math-ocr</a> on Hugging Face</p>
             </div>
+            
+            <!-- Proxy Selection -->
+            <div class="mt-4 text-center">
+                <div class="inline-block">
+                    <label for="proxy-selector" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CORS Proxy:</label>
+                    <select id="proxy-selector" class="text-sm rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-white">
+                        <option value="https://corsproxy.io/?">corsproxy.io</option>
+                        <option value="https://cors-anywhere.herokuapp.com/">cors-anywhere.herokuapp.com</option>
+                        <option value="https://api.allorigins.win/raw?url=">allorigins.win</option>
+                        <option value="custom">Custom Proxy URL</option>
+                    </select>
+                </div>
+                <div id="custom-proxy-container" class="mt-2 hidden">
+                    <input type="text" id="custom-proxy" placeholder="Enter custom proxy URL" class="text-sm rounded-md border-gray-300 shadow-sm focus:border-primary focus:ring-primary dark:bg-gray-700 dark:border-gray-600 dark:text-white w-64">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -188,6 +204,8 @@
         
         // Constants
         const HF_TOKEN = "HF_TOKEN_PLACEHOLDER";
+        const MODEL_URL = "https://oppastech-handwriting-math-ocr.hf.space";
+        
         // Dark mode detection
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
             document.documentElement.classList.add('dark');
@@ -230,6 +248,26 @@
         const resultImage = document.getElementById('result-image');
         const expressionContainer = document.getElementById('expression-container');
         const solutionContainer = document.getElementById('solution-container');
+        const proxySelector = document.getElementById('proxy-selector');
+        const customProxyContainer = document.getElementById('custom-proxy-container');
+        const customProxy = document.getElementById('custom-proxy');
+        
+        // Show/hide custom proxy input
+        proxySelector.addEventListener('change', () => {
+            if (proxySelector.value === 'custom') {
+                customProxyContainer.classList.remove('hidden');
+            } else {
+                customProxyContainer.classList.add('hidden');
+            }
+        });
+        
+        // Get the current proxy URL
+        function getProxyUrl() {
+            if (proxySelector.value === 'custom') {
+                return customProxy.value.trim();
+            }
+            return proxySelector.value;
+        }
         
         // Handle file upload
         fileUpload.addEventListener('change', (e) => {
@@ -273,163 +311,74 @@
                 // Convert file to base64
                 const base64Image = await fileToBase64(file);
                 
-                // Try different Hugging Face API endpoints with authentication
-                try {
-                    // Try the Inference API with authorization header
-                    const inferenceResponse = await fetch('https://api-inference.huggingface.co/models/oppastech/handwriting-math-ocr', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${HF_TOKEN}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            inputs: {
-                                image: `data:${file.type};base64,${base64Image}`
-                            }
-                        })
-                    });
-                    
-                    if (inferenceResponse.ok) {
-                        // If this works, process the data
-                        const inferenceData = await inferenceResponse.json();
-                        processInferenceResult(inferenceData);
-                        return;
-                    }
-                    
-                    // If inference API failed, try the spaces API
-                    console.log('Inference API failed, trying Spaces API...');
-                    const spacesResponse = await fetch('https://oppastech-handwriting-math-ocr.hf.space/run/predict', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${HF_TOKEN}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            data: [
-                                {
-                                    data: `data:${file.type};base64,${base64Image}`,
-                                    name: file.name,
-                                    size: file.size,
-                                    type: file.type
-                                }
-                            ]
-                        })
-                    });
-                    
-                    if (spacesResponse.ok) {
-                        const spacesData = await spacesResponse.json();
-                        processSpacesResult(spacesData);
-                        return;
-                    }
-                    
-                    // If spaces API format 1 failed, try format 2
-                    console.log('Spaces API format 1 failed, trying format 2...');
-                    const spacesResponse2 = await fetch('https://oppastech-handwriting-math-ocr.hf.space/api/predict', {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${HF_TOKEN}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({
-                            fn_index: 0,
-                            data: [`data:${file.type};base64,${base64Image}`]
-                        })
-                    });
-                    
-                    if (spacesResponse2.ok) {
-                        const spacesData2 = await spacesResponse2.json();
-                        processSpacesResult(spacesData2);
-                        return;
-                    }
-                    
-                    throw new Error('All API endpoints failed. Please try again later.');
-                    
-                } catch (apiError) {
-                    console.error('API Error:', apiError);
-                    
-                    // As a last resort, try using Poe to process the image
-                    if (window.Poe) {
-                        try {
-                            // Show special loading message
-                            resultPlaceholder.innerHTML = `
-                                <div class="text-center text-gray-500 dark:text-gray-400">
-                                    <div class="spinner mx-auto mb-4"></div>
-                                    <p class="font-medium">Using Poe to process the image</p>
-                                    <p class="text-xs mt-2">This might take a moment...</p>
-                                </div>
-                            `;
-                            
-                            console.log('Trying Poe as a fallback...');
-                            
-                            // Register a handler for the response
-                            const handlerId = `math-ocr-handler-${Date.now()}`;
-                            window.Poe.registerHandler(handlerId, (result) => {
-                                if (result.status === "complete" && result.responses.length > 0) {
-                                    const response = result.responses[0];
-                                    
-                                    try {
-                                        // Try to parse JSON from the response
-                                        const startIndex = response.content.indexOf('{');
-                                        const endIndex = response.content.lastIndexOf('}') + 1;
-                                        
-                                        if (startIndex >= 0 && endIndex > startIndex) {
-                                            const jsonStr = response.content.substring(startIndex, endIndex);
-                                            const data = JSON.parse(jsonStr);
-                                            
-                                            if (data.expression && data.solution) {
-                                                // Display results
-                                                expressionContainer.textContent = data.expression;
-                                                solutionContainer.textContent = data.solution;
-                                                
-                                                // Handle image if present
-                                                if (data.image_url) {
-                                                    resultImage.src = data.image_url;
-                                                } else {
-                                                    // Use the original image as fallback
-                                                    resultImage.src = imagePreview.src;
-                                                }
-                                                
-                                                // Show results
-                                                resultPlaceholder.classList.add('hidden');
-                                                results.classList.remove('hidden');
-                                            } else {
-                                                throw new Error('Invalid response format');
-                                            }
-                                        } else {
-                                            throw new Error('Could not find JSON in response');
-                                        }
-                                    } catch (parseError) {
-                                        console.error('Parse error:', parseError);
-                                        throw new Error('Failed to parse response from Poe');
-                                    }
-                                } else if (result.status === "error") {
-                                    throw new Error('Error from Poe: ' + (result.responses[0]?.statusText || 'Unknown error'));
-                                }
-                            });
-                            
-                            // Send the user message with the image attachment
-                            await window.Poe.sendUserMessage(
-                                "@Claude-3.7-Sonnet Here's a handwritten math expression. Please recognize the expression and solve it. Return ONLY a JSON object with keys: expression, solution, image_url (if you can generate one). No explanations or markdown formatting.",
-                                {
-                                    handler: handlerId,
-                                    openChat: false,
-                                    stream: false,
-                                    attachments: [file]
-                                }
-                            );
-                            
-                            return;
-                        } catch (poeError) {
-                            console.error('Poe error:', poeError);
-                            throw new Error('All methods failed. Please try again later.');
-                        }
-                    } else {
-                        throw new Error('Failed to connect to the Hugging Face API and Poe is not available.');
-                    }
+                // Get proxy URL
+                const proxyUrl = getProxyUrl();
+                if (!proxyUrl) {
+                    throw new Error('Please select a CORS proxy or enter a custom one');
                 }
                 
+                // Try the proxy request
+                const apiUrl = `${proxyUrl}${MODEL_URL}/api/predict`;
+                console.log(`Trying proxy request to: ${apiUrl}`);
+                
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${HF_TOKEN}`,
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({
+                        data: [`data:${file.type};base64,${base64Image}`],
+                        fn_index: 0
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API request failed with status ${response.status}`);
+                }
+                
+                const data = await response.json();
+                console.log('Response data:', data);
+                
+                // Process the response data
+                if (data && data.data && Array.isArray(data.data)) {
+                    // Response should have 3 elements: processed image, expression, and solution
+                    const processedImageData = data.data[0];
+                    const expression = data.data[1];
+                    const solution = data.data[2];
+                    
+                    // For the image, it might be returned in different formats
+                    // It could be a base64 string, a data URL, or an object with a URL
+                    if (typeof processedImageData === 'string') {
+                        if (processedImageData.startsWith('data:')) {
+                            resultImage.src = processedImageData;
+                        } else {
+                            resultImage.src = `data:image/png;base64,${processedImageData}`;
+                        }
+                    } else if (processedImageData && processedImageData.url) {
+                        resultImage.src = processedImageData.url;
+                    } else {
+                        // Fallback to original image
+                        resultImage.src = imagePreview.src;
+                    }
+                    
+                    expressionContainer.textContent = expression || 'No expression detected';
+                    solutionContainer.textContent = solution || 'No solution available';
+                    
+                    // Show results
+                    resultPlaceholder.classList.add('hidden');
+                    results.classList.remove('hidden');
+                } else {
+                    throw new Error('Invalid response format from API');
+                }
             } catch (error) {
                 console.error('Error:', error);
+                
+                let errorMessage = error.message;
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorMessage = 'Network error. The CORS proxy may be unavailable or rate limited. Try a different proxy.';
+                }
                 
                 // Display error in UI
                 resultPlaceholder.innerHTML = `
@@ -438,8 +387,8 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
                         </svg>
                         <p class="font-medium">Error processing image</p>
-                        <p class="text-sm mt-1">${error.message}</p>
-                        <p class="text-xs mt-2">Please try a different image or check your connection.</p>
+                        <p class="text-sm mt-1">${errorMessage}</p>
+                        <p class="text-xs mt-2">Try selecting a different CORS proxy from the dropdown below.</p>
                     </div>
                 `;
                 resultPlaceholder.classList.remove('hidden');
@@ -451,76 +400,6 @@
                 loadingSpinner.classList.add('hidden');
             }
         });
-        
-        // Process results from the Inference API
-        function processInferenceResult(data) {
-            // Inference API responses vary by model
-            // We'll need to adapt this based on the actual response format
-            console.log('Inference data:', data);
-            
-            try {
-                if (data.image) {
-                    // If there's an image in the response
-                    resultImage.src = `data:image/jpeg;base64,${data.image}`;
-                } else if (data.processed_image) {
-                    resultImage.src = `data:image/jpeg;base64,${data.processed_image}`;
-                } else {
-                    // Use the original image as fallback
-                    resultImage.src = imagePreview.src;
-                }
-                
-                expressionContainer.textContent = data.expression || data.text || 'No expression detected';
-                solutionContainer.textContent = data.solution || data.result || 'No solution available';
-                
-                // Show results
-                resultPlaceholder.classList.add('hidden');
-                results.classList.remove('hidden');
-            } catch (error) {
-                console.error('Error processing inference result:', error);
-                throw new Error('Failed to process the API response');
-            }
-        }
-        
-        // Process results from the Spaces API
-        function processSpacesResult(data) {
-            console.log('Spaces data:', data);
-            
-            try {
-                if (data && data.data && Array.isArray(data.data)) {
-                    // Parse the response based on Gradio API structure
-                    const processedImageData = data.data[0];
-                    const expression = data.data[1];
-                    const solution = data.data[2];
-                    
-                    // For image, we need to handle it based on how it's returned
-                    if (typeof processedImageData === 'string' && processedImageData.startsWith('data:')) {
-                        // If it's a data URL
-                        resultImage.src = processedImageData;
-                    } else if (typeof processedImageData === 'string') {
-                        // If it's a base64 string without the data URL prefix
-                        resultImage.src = `data:image/png;base64,${processedImageData}`;
-                    } else if (processedImageData && processedImageData.url) {
-                        // If it's an object with a url property
-                        resultImage.src = processedImageData.url;
-                    } else {
-                        // Use the original image as fallback
-                        resultImage.src = imagePreview.src;
-                    }
-                    
-                    expressionContainer.textContent = expression || 'No expression detected';
-                    solutionContainer.textContent = solution || 'No solution available';
-                    
-                    // Show results
-                    resultPlaceholder.classList.add('hidden');
-                    results.classList.remove('hidden');
-                } else {
-                    throw new Error('Invalid response format');
-                }
-            } catch (error) {
-                console.error('Error processing spaces result:', error);
-                throw new Error('Failed to process the API response');
-            }
-        }
         
         // Add drag and drop functionality
         const dropArea = document.querySelector('.custom-file-upload');
