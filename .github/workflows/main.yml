@@ -1,0 +1,12 @@
+// Make API request with the token
+const response = await fetch(`${MODEL_URL}/api/predict`, {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${HF_TOKEN}`
+    },
+    body: JSON.stringify({
+        data: [`data:${file.type};base64,${base64Image}`],
+        fn_index: 0
+    })
+});
