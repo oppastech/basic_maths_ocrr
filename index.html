@@ -1,442 +1,57 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Math OCR Solver</title>
-    <style>
-        :root {
-            --primary: #FF85A2;
-            --secondary: #FFC2D1;
-            --accent: #7879F1;
-            --light: #F5F7FB;
-            --dark: #2D3748;
-        }
-        
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-        
-        body {
-            background-color: var(--light);
-            color: var(--dark);
-            line-height: 1.6;
-            display: flex;
-            flex-direction: column;
-            min-height: 100vh;
-        }
-        
-        header {
-            background-color: white;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-            padding: 1.5rem;
-            text-align: center;
-        }
-        
-        h1 {
-            color: var(--primary);
-            font-size: 2.5rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .subtitle {
-            color: var(--accent);
-            font-size: 1.2rem;
-            font-weight: 500;
-        }
-        
-        main {
-            flex: 1;
-            max-width: 900px;
-            width: 100%;
-            margin: 0 auto;
-            padding: 2rem 1rem;
-        }
-        
-        .container {
-            background-color: white;
-            border-radius: 12px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.07);
-            padding: 2rem;
-            margin-bottom: 2rem;
-        }
-        
-        .drag-area {
-            border: 3px dashed var(--secondary);
-            border-radius: 10px;
-            padding: 3rem 1.5rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-bottom: 1rem;
-            position: relative;
-        }
-        
-        .drag-area:hover {
-            border-color: var(--primary);
-            background-color: rgba(255, 194, 209, 0.1);
-        }
-        
-        .drag-area.active {
-            border-color: var(--accent);
-        }
-        
-        .drag-area h3 {
-            color: var(--primary);
-            font-size: 1.5rem;
-            margin-bottom: 0.5rem;
-        }
-        
-        .drag-area p {
-            color: #718096;
-            font-size: 1rem;
-        }
-        
-        .drag-area span {
-            color: var(--accent);
-            font-weight: 600;
-        }
-        
-        input[type="file"] {
-            display: none;
-        }
-        
-        .preview-container {
-            margin-top: 1.5rem;
-            text-align: center;
-            display: none;
-        }
-        
-        #preview-image {
-            max-width: 100%;
-            max-height: 300px;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        
-        .expression-container {
-            margin-top: 1.5rem;
-            display: none;
-        }
-        
-        .result-container {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 1.5rem;
-        }
-        
-        @media (max-width: 768px) {
-            .result-container {
-                grid-template-columns: 1fr;
-            }
-        }
-        
-        .result-box {
-            background-color: #f5f7fb;
-            border-radius: 8px;
-            padding: 1.5rem;
-            border-left: 4px solid var(--accent);
-        }
-        
-        .result-box h3 {
-            color: var(--accent);
-            margin-bottom: 0.5rem;
-            font-size: 1.1rem;
-        }
-        
-        .result-box p {
-            font-size: 1.8rem;
-            font-weight: 600;
-            word-break: break-word;
-            color: var(--dark);
-        }
-        
-        .processed-image-container {
-            margin-top: 1.5rem;
-            text-align: center;
-            display: none;
-        }
-        
-        #processed-image {
-            max-width: 100%;
-            border-radius: 8px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-        
-        .loading {
-            display: none;
-            text-align: center;
-            margin: 2rem 0;
-        }
-        
-        .loading-spinner {
-            width: 50px;
-            height: 50px;
-            border: 5px solid var(--secondary);
-            border-top: 5px solid var(--primary);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-        }
-        
-        .btn {
-            background-color: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 0.8rem 1.5rem;
-            font-size: 1rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-block;
-            margin-top: 1rem;
-        }
-        
-        .btn:hover {
-            background-color: #ff6b8e;
-            transform: translateY(-2px);
-        }
-        
-        .btn:disabled {
-            background-color: #ccc;
-            cursor: not-allowed;
-        }
-        
-        footer {
-            background-color: white;
-            text-align: center;
-            padding: 1.5rem;
-            margin-top: auto;
-            box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
-        }
-        
-        footer a {
-            color: var(--accent);
-            text-decoration: none;
-            font-weight: 600;
-        }
-        
-        footer a:hover {
-            text-decoration: underline;
-        }
-        
-        .error-message {
-            background-color: #FFEAEA;
-            color: #E53E3E;
-            padding: 1rem;
-            border-radius: 8px;
-            margin-top: 1rem;
-            border-left: 4px solid #E53E3E;
-            display: none;
-        }
-        
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        
-        .cute-icon {
-            font-size: 2rem;
-            margin-bottom: 1rem;
-            color: var(--primary);
-        }
-    </style>
+    <title>Math OCR</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/0.21.1/axios.min.js"></script>
 </head>
+
 <body>
-    <header>
-        <h1>✏️ MathScan</h1>
-        <p class="subtitle">Upload your handwritten math and see the magic!</p>
-    </header>
-    
-    <main>
-        <div class="container">
-            <div class="drag-area" id="drag-area">
-                <div class="cute-icon">📝</div>
-                <h3>Upload Math Expression</h3>
-                <p>Drag & drop your image here or <span>browse files</span></p>
-                <input type="file" id="file-input" accept="image/*">
-            </div>
-            
-            <div class="preview-container" id="preview-container">
-                <h3>Your Image</h3>
-                <img id="preview-image" src="#" alt="Preview">
-                <button class="btn" id="process-btn">Process Image</button>
-            </div>
-            
-            <div class="error-message" id="error-message"></div>
-            
-            <div class="loading" id="loading">
-                <div class="loading-spinner"></div>
-                <p>Processing your math expression...</p>
-            </div>
+    <div class="container">
+        <h1>Math OCR</h1>
+        <p>Upload an image of a handwritten math expression and get the recognized expression and its solution!</p>
+        <input type="file" id="imageUpload" accept="image/*">
+        <button id="processButton">Process</button>
+
+        <div id="results" class="results">
+            <h2>Results</h2>
+            <img id="resultImage" alt="Result Image" style="display: none;">
+            <p id="mathExpression"></p>
+            <p id="solution"></p>
         </div>
-        
-        <div class="container expression-container" id="expression-container">
-            <div class="result-container">
-                <div class="result-box">
-                    <h3>Recognized Expression</h3>
-                    <p id="expression-result">-</p>
-                </div>
-                <div class="result-box">
-                    <h3>Solution</h3>
-                    <p id="solution-result">-</p>
-                </div>
-            </div>
-            
-            <div class="processed-image-container" id="processed-image-container">
-                <h3>Detected Elements</h3>
-                <img id="processed-image" src="#" alt="Processed Image">
-            </div>
-        </div>
-    </main>
-    
-    <footer>
-        <p>Powered by <a href="https://huggingface.co/spaces/oppastech/handwriting-math-ocr" target="_blank">HuggingFace Space</a> | Made with ❤️</p>
-    </footer>
-    
+    </div>
+
     <script>
-        // DOM elements
-        const dragArea = document.getElementById('drag-area');
-        const fileInput = document.getElementById('file-input');
-        const previewContainer = document.getElementById('preview-container');
-        const previewImage = document.getElementById('preview-image');
-        const processBtn = document.getElementById('process-btn');
-        const loading = document.getElementById('loading');
-        const expressionContainer = document.getElementById('expression-container');
-        const expressionResult = document.getElementById('expression-result');
-        const solutionResult = document.getElementById('solution-result');
-        const processedImageContainer = document.getElementById('processed-image-container');
-        const processedImage = document.getElementById('processed-image');
-        const errorMessage = document.getElementById('error-message');
-        
-        // API endpoint
-        const API_URL = "https://oppastech-handwriting-math-ocr.hf.space/api/predict";
-        
-        // Event listeners
-        dragArea.addEventListener('click', () => fileInput.click());
-        
-        // File input change handler
-        fileInput.addEventListener('change', function() {
-            const file = this.files[0];
-            if (file) {
-                showPreviewAndResetResults(file);
-            }
-        });
-        
-        // Drag and drop handlers
-        ['dragover', 'dragleave', 'drop'].forEach(eventName => {
-            dragArea.addEventListener(eventName, preventDefaults, false);
-        });
-        
-        function preventDefaults(e) {
-            e.preventDefault();
-            e.stopPropagation();
-        }
-        
-        dragArea.addEventListener('dragover', function() {
-            this.classList.add('active');
-        });
-        
-        dragArea.addEventListener('dragleave', function() {
-            this.classList.remove('active');
-        });
-        
-        dragArea.addEventListener('drop', function(e) {
-            this.classList.remove('active');
-            const file = e.dataTransfer.files[0];
-            if (file) {
-                showPreviewAndResetResults(file);
-            }
-        });
-        
-        // Process button handler
-        processBtn.addEventListener('click', processImage);
-        
-        // Functions
-        function showPreviewAndResetResults(file) {
-            if (!file.type.match('image.*')) {
-                showError('Please upload an image file');
-                return;
-            }
-            
-            hideError();
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                previewImage.src = e.target.result;
-                previewContainer.style.display = 'block';
-                expressionContainer.style.display = 'none';
-                processedImageContainer.style.display = 'none';
-            };
-            reader.readAsDataURL(file);
-        }
-        
-        async function processImage() {
-            // Show loading state
-            loading.style.display = 'block';
-            processBtn.disabled = true;
-            hideError();
-            
+        const processButton = document.getElementById('processButton');
+        const imageUpload = document.getElementById('imageUpload');
+
+        processButton.onclick = async () => {
+            const file = imageUpload.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
             try {
-                // Get the image data
-                const imageData = previewImage.src;
-                
-                // Create form data with base64 image
-                const formData = new FormData();
-                formData.append('data', JSON.stringify([imageData]));
-                
-                // Call the API
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                if (!response.ok) {
-                    throw new Error('API request failed');
-                }
-                
-                const result = await response.json();
-                
-                // Process and display results
-                if (result.data && result.data.length >= 3) {
-                    // [processed_image, expression, solution]
-                    const [processedImageData, expression, solution] = result.data;
-                    
-                    // Display the results
-                    expressionResult.textContent = expression || 'No expression detected';
-                    solutionResult.textContent = solution || 'Could not solve';
-                    
-                    if (processedImageData) {
-                        processedImage.src = processedImageData;
-                        processedImageContainer.style.display = 'block';
+                const response = await axios.post('https://huggingface.co/spaces/oppastech/handwriting-math-ocr/api/predict', formData, {
+                    headers: {
+                        'Content-Type': 'multipart/form-data'
                     }
-                    
-                    expressionContainer.style.display = 'block';
-                } else {
-                    throw new Error('Invalid response from the API');
-                }
+                });
+
+                const { data } = response;
+                document.getElementById('resultImage').src = `data:image/jpeg;base64,${data.data[0]}`;
+                document.getElementById('resultImage').style.display = 'block';
+                document.getElementById('mathExpression').innerText = `Math Expression: ${data.data[1]}`;
+                document.getElementById('solution').innerText = `Solution: ${data.data[2]}`;
             } catch (error) {
-                console.error('Error:', error);
-                showError('Error processing image. Please try again.');
-            } finally {
-                // Hide loading state
-                loading.style.display = 'none';
-                processBtn.disabled = false;
+                console.error("Error processing the image:", error);
             }
-        }
-        
-        function showError(message) {
-            errorMessage.textContent = message;
-            errorMessage.style.display = 'block';
-        }
-        
-        function hideError() {
-            errorMessage.style.display = 'none';
-        }
+        };
     </script>
 </body>
+
 </html>
